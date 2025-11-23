@@ -2,6 +2,7 @@
 #include <random>
 #include <chrono>
 #include <limits>
+#include <iostream>
 
 double runMonteCarlo(const Graph& graph,
     int startIdx,
@@ -20,9 +21,11 @@ double runMonteCarlo(const Graph& graph,
     // 랜덤 엔진 초기화
     std::mt19937 rng(static_cast<unsigned int>(
         std::chrono::high_resolution_clock::now().time_since_epoch().count()));
-
+	
+    int bestSteps = INT_MAX;  // 스텝 수가 최소인 경로 찾기
     double bestLen = INF;
     std::vector<int> bestPath;
+    int successCount = 0;
 
     for (int trial = 0; trial < numTrials; ++trial) {
         int current = startIdx;
@@ -52,19 +55,28 @@ double runMonteCarlo(const Graph& graph,
             path.push_back(current);
         }
 
+        // 목적지 도달 시
         if (!path.empty() && path.back() == goalIdx) {
-            // 목적지에 도달한 경로 중에서 최소 길이 선택
-            if (totalLen < bestLen) {
+            successCount++;
+            int numSteps = path.size() - 1;
+
+            // step 수가 최소인 경로 선택
+            if (numSteps < bestSteps) {
+                bestSteps = numSteps;
                 bestLen = totalLen;
                 bestPath = path;
             }
         }
     }
-
-    if (bestLen == INF) {
-        // 한 번도 목적지까지 도달 못함
-        return INF;
+    // 디버깅 정보 (이건 추가해도 OK)
+    std::cout << "[Monte Carlo] Trials: " << numTrials
+        << ", Success: " << successCount;
+    if (successCount > 0) {
+        std::cout << " (" << (successCount * 100.0 / numTrials) << "%)";
     }
+    std::cout << std::endl;
+
+    if (bestSteps == INT_MAX) return INF;
 
     outPath = bestPath;
     return bestLen;
