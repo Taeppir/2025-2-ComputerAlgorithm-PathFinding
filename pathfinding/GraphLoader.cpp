@@ -92,7 +92,6 @@ Graph GraphLoader::loadFromGraphML(const std::string& filename) {
 
         double length = 1.0;
         bool hasLength = false;
-        bool oneway = false;
 
         for (XMLElement* dataElem = edgeElem->FirstChildElement("data");
             dataElem;
@@ -107,21 +106,37 @@ Graph GraphLoader::loadFromGraphML(const std::string& filename) {
                 length = std::stod(text);
                 hasLength = true;
             }
-            else if (k == "d13") {      // oneway
-                std::string v = text;
-                oneway = (v == "True" || v == "true" || v == "1");
-            }
         }
 
         if (!hasLength) length = 1.0;
 
-        // 방향: src -> tgt
+        // --------------------------------------------------------------
+        // 간선 처리 로직 수정 (김태희, 2025.11.23)
+        // --------------------------------------------------------------
+        // readme.txt 에도 설명 추가해두었습니다.
+        // OSMnx가 생성한 GraphML은 이미 directed graph 형식입니다.
+        // 
+        // - 양방향 도로는 2개의 directed edge로 저장됩니다.
+        //   예: 도로 A ↔ B 이면, GraphML에 A→B, B→A 2개 간선으로 저장되고 있습니다.
+        // 
+        // - 일방통행은 1개의 directed edge로 저장됩니다.
+        //   예: A→B만 가능 → GraphML에 A→B 1개 간선만 저장
+        //
+        // 따라서 각 간선을 source → target 방향으로만 추가하면 됩니다.
+        // oneway(d13), reversed(d14) 속성은 메타데이터이며, 실제 그래프 구조는
+        // 이미 GraphML에 올바르게 반영되어 있습니다.
+        //
+        // 기존 코드 문제점:
+        //   - oneway=False인 간선마다 양방향 처리를 하여 중복 발생
+        //   - GraphML 간선 18,189개 → 생성된 간선 35,429개 (약 2배 중복)
+        //
+        // 수정 후:
+        //   - 각 간선을 있는 그대로만 추가
+        //   - GraphML 간선 18,189개 → 생성된 간선 18,189개 (정확히 일치)
+        //   - test_graphml_loading.cpp 실행하면 결과 확인할 수 있습니다.
+        // --------------------------------------------------------------
+        
         graph.adj[srcIdx].push_back({ tgtIdx, length });
-
-        // oneway가 아니라면 양방향으로 추가
-        if (!oneway) {
-            graph.adj[tgtIdx].push_back({ srcIdx, length });
-        }
     }
 
     std::cout << "Loaded graph: " << graph.nodes.size()
