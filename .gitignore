@@ -3,5 +3,4 @@ Debug/
 Release/
 .vs/
 *.user
-*.sln
-pathfinding/jongro.graphml
+pathfinding/*.graphml
